@@ -1,44 +1,113 @@
-pragma solidity ^0.5.1;
+// SPDX-License-Identifier: GPL-3.0
 
-interface IUniswapV2Router {
-    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
-    external
-    payable
-    returns (uint[] memory amounts);
+pragma solidity 0.6.12;
 
-    function WETH() external pure returns (address);
+import "./common/SafeMath.sol";
+import "./common/IERC20.sol";
+import "./common/Address.sol";
+import "./common/SafeERC20.sol";
 
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
-}
+import "./interfaces/IConverter.sol";
 
 contract Trader {
+    using SafeERC20 for IERC20;
+    using Address for address;
+    using SafeMath for uint256;
 
-    IUniswapV2Router private _uniswapV2Router;
-    address private _WETH;
-    address private _token;
+    /* ========== STATE VARIABLES ========== */
 
-    constructor(IUniswapV2Router __uniswapV2Router, address __token) public {
-        _uniswapV2Router = IUniswapV2Router(__uniswapV2Router);
-        _token = __token;
-        _WETH = IUniswapV2Router(_uniswapV2Router).WETH();
+    address public governance;
+    address public converter;
+    mapping (address => bool) public isReserveAsset;
+
+    /* ========== CONSTRUCTOR ========== */
+
+    constructor(address _converter) public {
+        governance = msg.sender;
+        converter = _converter;
     }
 
-    function getPrice(uint ethAmount) public view returns (uint) {
-        address[] memory path = new address[](2);
-        path[0] = address(_WETH);
-        path[1] = _token;
-        return _uniswapV2Router.getAmountsOut(ethAmount, path)[1];
+    /* ========== MODIFIER ========== */
+
+    modifier onlyGov() {
+        require(msg.sender == governance);
+        _;
     }
 
-    function sell(address from, address to, uint fromAmount, uint targetAmount) external payable returns (uint receivedAmount) {
-        //IMPORTANT: receivedAmount should >= targetAmount
-        address[] memory path = new address[](2);
-        path[0] = address(_WETH);
-        path[1] = _token;
-        require(getPrice(msg.value) >= targetAmount, "Transaction reverted: price higher than the target");
-        _uniswapV2Router.swapETHForExactTokens(fromAmount, path, to, now + 900);
-        return receivedAmount;
+    /* ========== VIEW FUNCTIONS ========== */
+
+    function holdings(address _token)
+        public
+        view
+        returns (uint256)
+    {
+        return IERC20(_token).balanceOf(address(this));
     }
+
+    function testSwap(address _tokenIn, address _tokenOut, uint256 _amountIn) public view returns (uint256) {
+        return IConverter(converter).getExpectedAmountOut(_tokenIn, _tokenOut, _amountIn);
+    }
+
+    function isProfitableSwap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _expectedAmountOut) external view returns (bool) {
+        uint256 actualAmountOut = testSwap(_tokenIn, _tokenOut, _amountIn);
+        return actualAmountOut >= _expectedAmountOut ? true : false;
+    }
+
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    receive() external payable {}
+
+    function infiniteApprove(address _token) external onlyGov {
+        IERC20(_token).approve(converter, 99999999999999999999999999999999999999999);
+    }
+
+    // swap any token to any token
+    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _expectedAmountOut) public onlyGov {
+        uint256 amountOut = IConverter(converter).swap(_tokenIn, _tokenOut, _amountIn);
+        require(amountOut >= _expectedAmountOut, "unprofitable");
+        emit Swapped(_tokenIn, _tokenOut, _amountIn, amountOut);
+    }
+
+    /* ========== ADMIN FUNCTIONS ========== */
+
+    function setGov(address _governance)
+        public
+        onlyGov
+    {
+        governance = _governance;
+    }
+
+    function setConverter(address _converter)
+        public
+        onlyGov
+    {
+        converter = _converter;
+    }
+
+    function takeOut(
+        address _token,
+        address _destination,
+        uint256 _amount
+    )
+        public
+        onlyGov
+    {
+        require(_amount <= holdings(_token), "!insufficient");
+        IERC20(_token).safeTransfer(_destination, _amount);
+    }
+
+    function takeOutETH(
+        address payable _destination,
+        uint256 _amount
+    )
+        public
+        payable
+        onlyGov
+    {
+        _destination.transfer(_amount);
+    }
+
+    /* ========== EVENTS ========== */
+
+    event Swapped(address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut);
 }
-

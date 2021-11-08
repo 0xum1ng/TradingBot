@@ -1,17 +1,23 @@
 {
-  "name": "paraswap-backend-test",
+  "name": "arbot",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node ./src/bot.js",
-    "build": "truffle build"
+    "clean": "rm -rf build/",
+    "precompile": "yarn clean",
+    "compile": "truffle compile"
   },
   "dependencies": {
+    "dotenv": "^10.0.0",
+    "dotenv-flow": "^3.2.0",
+    "ganache-core": "^2.11.2",
     "@ethersproject/address": "^5.0.8",
     "@ethersproject/contracts": "^5.0.8",
     "@ethersproject/providers": "^5.0.17",
     "@ethersproject/solidity": "^5.0.7",
-    "@uniswap/sdk": "^3.0.3",
-    "ethers": "^5.0.23"
+    "ethers": "^5.0.23",
+    "truffle": "^5.3.6",
+    "@truffle/hdwallet-provider": "^1.0.40"
   }
 }
