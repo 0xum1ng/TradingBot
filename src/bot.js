@@ -20,7 +20,6 @@ const provider = new providers.JsonRpcProvider(RPC);
 const signer = new Wallet(PRIVATE_KEY, provider);
 const traderInstance = new Contract('0xf366A6c441bd93C383b4ca64771269A112ab0a9E', trader.abi, signer);
 
-
 const trades = [
     {
         "tokenIn": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", // eth
