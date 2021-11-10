@@ -1,44 +1,68 @@
-const trader = require("../build/contracts/Trader");
+require('dotenv').config()
 const {
     Contract,
     Wallet,
-    getDefaultProvider,
+    providers,
     utils
 } = require('ethers')
+const Web3 = require('Web3')
 
-// Replace 'Kovan' by any other network
-const provider = getDefaultProvider('kovan');
+const {
+  LOOP_INTERVAL,
+  PRIVATE_KEY,
+  RPC
+} = process.env
+
+const trader = require("../build/contracts/Trader");
+
+// Set up web3
+const provider = new providers.JsonRpcProvider(RPC);
+const signer = new Wallet(PRIVATE_KEY, provider);
+const traderInstance = new Contract('0xf366A6c441bd93C383b4ca64771269A112ab0a9E', trader.abi, signer);
 
 
-const jsonFile = [
+const trades = [
     {
-        "from": "ETH",
-        "to": "DAI",
-        "target": "400",
-        "amount": "1"
-    },
-    {
-        "from": "ETH",
-        "to": "DAI",
-        "target": "500",
-        "amount": "2"
+        "tokenIn": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", // eth
+        "tokenOut": "0x4204a0aF0991b2066d2D617854D5995714a79132", // oolong
+        "amountIn": "0.000001",
+        "minAmountOut": "4.23"
     }
 ];
 
-setInterval(
-(async() => {
+async function main() {
+  for (let i=0; i<trades.length; i++) {
+    // Check if trade is profitable
+    const isProfitable = await traderInstance.isProfitableSwap(
+        trades[i].tokenIn,
+        trades[i].tokenOut,
+        utils.parseEther(trades[i].amountIn),
+        // TODO: Fetch live price from binance, and add % based discount
+        utils.parseEther(trades[i].minAmountOut)
+    );
 
-    // Add Signer here
-    // const signer = new Wallet('PRIVATEKEY_HERE', provider);
-    const contract = new Contract('0x244e37a91Fb5D52072a03446227534C2eeE3818e', trader.abi, provider);
-
-    // Uncomment if Signer is set
-    // const contract = new Contract('0x244e37a91Fb5D52072a03446227534C2eeE3818e', trader.abi, signer);
-
-    const currentPrice = await contract.getPrice(utils.parseEther(jsonFile[0].amount));
-    if(currentPrice >= jsonFile.target) {
-        await contract.sell()
+    // execute trade if profitable
+    if (isProfitable) {
+       console.log(`\n`)
+       console.log("found profitable trade: ", trades[i],)
+       console.log("swapping...")
+       try {
+         const swapTx = await traderInstance.swap(
+           trades[i].tokenIn,
+           trades[i].tokenOut,
+           utils.parseEther(trades[i].amountIn),
+           utils.parseEther(trades[i].minAmountOut)
+         )
+         console.log("swapped SUCCEEDED: ", swapTx.hash)
+       } catch (e) {
+         console.log("swapped FAILED with exception: ", e.error.error.body)
+       }
     }
-    console.log(currentPrice.toString());
+  }
 
-}), 13000);
+  setTimeout(() => {
+    main()
+  }, LOOP_INTERVAL)
+}
+
+main()

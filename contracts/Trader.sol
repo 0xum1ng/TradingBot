@@ -18,7 +18,6 @@ contract Trader {
 
     address public governance;
     address public converter;
-    mapping (address => bool) public isReserveAsset;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -57,12 +56,9 @@ contract Trader {
 
     receive() external payable {}
 
-    function infiniteApprove(address _token) external onlyGov {
-        IERC20(_token).approve(converter, 99999999999999999999999999999999999999999);
-    }
-
     // swap any token to any token
-    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _expectedAmountOut) public onlyGov {
+    function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _expectedAmountOut) external onlyGov {
+        IERC20(_tokenIn).approve(converter, 99999999999999999999999999999999999999999);
         uint256 amountOut = IConverter(converter).swap(_tokenIn, _tokenOut, _amountIn);
         require(amountOut >= _expectedAmountOut, "unprofitable");
         emit Swapped(_tokenIn, _tokenOut, _amountIn, amountOut);
