@@ -11,7 +11,7 @@ const migration = async (deployer, network, accounts) => {
 // ============ Deploy Functions ============
 async function deployConverter(deployer, network) {
   const weth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000"
-  const router = "0x4df04E20cCd9a8B82634754fcB041e86c5FF085A"
+  const router = "0x17C83E2B96ACfb5190d63F5E46d93c107eC0b514"
   await deployer.deploy(Converter, weth, router)
 }
 

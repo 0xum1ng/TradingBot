@@ -1,0 +1,10 @@
+[
+    {
+        "symbol": "ETHUSDC",
+        "token1": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
+        "token2": "0x66a2a913e447d6b4bf33efbec43aaef87890fbbc",
+        "token1Amount": 1,
+        "token2Amount": 5000,
+        "profitPercent": 0.05
+    }
+]
